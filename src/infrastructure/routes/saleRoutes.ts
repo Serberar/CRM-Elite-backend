@@ -18,6 +18,13 @@ router.get(
   SaleController.getSalesStats.bind(SaleController)
 );
 
+// Lista de comerciales únicos para filtros
+router.get(
+  '/comerciales',
+  authMiddleware,
+  SaleController.getComerciales.bind(SaleController)
+);
+
 // Listar ventas con filtros
 router.get(
   '/',

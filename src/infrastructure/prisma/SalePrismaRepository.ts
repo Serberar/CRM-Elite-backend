@@ -19,6 +19,7 @@ type SaleFilters = {
   statusId?: string;
   from?: Date;
   to?: Date;
+  comercial?: string;
 };
 
 export class SalePrismaRepository implements ISaleRepository {
@@ -31,6 +32,7 @@ export class SalePrismaRepository implements ISaleRepository {
 
     clientSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput;
     addressSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    comercial?: string | null;
   }): Promise<Sale> {
     const row = await dbCircuitBreaker.execute(() =>
       prisma.sale.create({
@@ -42,6 +44,7 @@ export class SalePrismaRepository implements ISaleRepository {
           metadata: data.metadata ?? Prisma.JsonNull,
           clientSnapshot: data.clientSnapshot ?? Prisma.JsonNull,
           addressSnapshot: data.addressSnapshot ?? Prisma.JsonNull,
+          comercial: data.comercial ?? null,
         },
       })
     );
@@ -121,6 +124,7 @@ export class SalePrismaRepository implements ISaleRepository {
         where: {
           clientId: filters.clientId,
           statusId: filters.statusId,
+          comercial: filters.comercial,
           createdAt:
             filters.from || filters.to
               ? {
@@ -143,6 +147,7 @@ export class SalePrismaRepository implements ISaleRepository {
     const where = {
       clientId: filters.clientId,
       statusId: filters.statusId,
+      comercial: filters.comercial,
       createdAt:
         filters.from || filters.to
           ? {
@@ -224,13 +229,15 @@ export class SalePrismaRepository implements ISaleRepository {
 
   async updateClientSnapshot(
     saleId: string,
-    clientSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput
+    clientSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput,
+    comercial?: string | null
   ): Promise<Sale> {
     const updated = await dbCircuitBreaker.execute(() =>
       prisma.sale.update({
         where: { id: saleId },
         data: {
           clientSnapshot: clientSnapshot ?? Prisma.JsonNull,
+          ...(comercial !== undefined ? { comercial } : {}),
         },
       })
     );
@@ -274,5 +281,22 @@ export class SalePrismaRepository implements ISaleRepository {
     );
 
     return SaleAssignment.fromPrisma(row);
+  }
+
+  async getDistinctComerciales(): Promise<string[]> {
+    const result = await dbCircuitBreaker.execute(() =>
+      prisma.sale.findMany({
+        where: {
+          comercial: { not: null },
+        },
+        select: { comercial: true },
+        distinct: ['comercial'],
+        orderBy: { comercial: 'asc' },
+      })
+    );
+
+    return result
+      .map((r) => r.comercial)
+      .filter((c): c is string => c !== null);
   }
 }

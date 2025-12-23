@@ -51,6 +51,7 @@ export class CreateSaleWithProductsUseCase {
       metadata: safeJson(dto.metadata ?? null),
       clientSnapshot,
       addressSnapshot,
+      comercial: dto.comercial ?? null,
     });
 
     let total = 0;

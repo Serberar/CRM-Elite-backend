@@ -57,6 +57,7 @@ const createSaleWithProductsBodySchema = z.object({
   statusId: z.string().uuid().optional(),
   notes: z.any().optional(),
   metadata: z.any().optional(),
+  comercial: z.string().min(1, 'El nombre del comercial es obligatorio'),
 });
 
 // Schema para middleware de validación
@@ -153,6 +154,7 @@ export interface SaleFiltersInternal {
   productId?: string;
   minTotal?: number;
   maxTotal?: number;
+  comercial?: string;
 }
 
 // El UseCase de cambiar estado recibe saleId del controller

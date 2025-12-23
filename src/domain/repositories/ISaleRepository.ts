@@ -16,6 +16,7 @@ export interface ISaleRepository {
     // 🔥 NUEVOS CAMPOS PARA SNAPSHOTS
     clientSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput;
     addressSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    comercial?: string | null;
   }): Promise<Sale>;
 
   findById(id: string): Promise<Sale | null>;
@@ -85,7 +86,8 @@ export interface ISaleRepository {
 
   updateClientSnapshot(
     saleId: string,
-    clientSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput
+    clientSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput,
+    comercial?: string | null
   ): Promise<Sale>;
 
   addHistory(data: {
@@ -100,4 +102,6 @@ export interface ISaleRepository {
     userId: string;
     role: string;
   }): Promise<SaleAssignment>;
+
+  getDistinctComerciales(): Promise<string[]>;
 }

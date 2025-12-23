@@ -64,6 +64,7 @@ describe('AddSaleItemUseCase', () => {
       listPaginated: jest.fn(),
       assignUser: jest.fn(),
       updateClientSnapshot: jest.fn(),
+      getDistinctComerciales: jest.fn(),
     };
 
     useCase = new AddSaleItemUseCase(mockRepository);

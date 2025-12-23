@@ -6,7 +6,7 @@ import { rolePermissions } from '@application/shared/authorization/rolePermissio
 export class UpdateClientSnapshotUseCase {
   constructor(private saleRepo: ISaleRepository) {}
 
-  async execute(saleId: string, clientSnapshot: any, currentUser: CurrentUser) {
+  async execute(saleId: string, clientSnapshot: any, currentUser: CurrentUser, comercial?: string) {
     checkRolePermission(
       currentUser,
       rolePermissions.sale.UpdateClientSnapshotUseCase,
@@ -19,15 +19,15 @@ export class UpdateClientSnapshotUseCase {
       throw new Error('Venta no encontrada');
     }
 
-    // Actualizar el clientSnapshot
-    await this.saleRepo.updateClientSnapshot(saleId, clientSnapshot);
+    // Actualizar el clientSnapshot y comercial
+    await this.saleRepo.updateClientSnapshot(saleId, clientSnapshot, comercial);
 
     // Registrar en el historial
     await this.saleRepo.addHistory({
       saleId,
       userId: currentUser.id,
       action: 'update_client_snapshot',
-      payload: { clientSnapshot },
+      payload: { clientSnapshot, comercial },
     });
 
     // Obtener la venta actualizada con todas las relaciones

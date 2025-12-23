@@ -48,6 +48,10 @@ model Client {
   lastModified DateTime @updatedAt
 
   sales Sale[]
+
+  @@index([dni])
+  @@index([phones(ops: ArrayOps)], type: Gin)
+  @@index([createdAt])
 }
 
 model Product {
@@ -78,6 +82,7 @@ model Sale {
   // 🔥 NUEVOS CAMPOS PARA SNAPSHOTS
   clientSnapshot  Json?   // ← snapshot del cliente editado en el front
   addressSnapshot Json?   // ← snapshot de la dirección seleccionada
+  comercial       String? // ← nombre del comercial que hace la venta
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

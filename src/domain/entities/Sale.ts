@@ -11,6 +11,7 @@ export class Sale {
     public readonly metadata: JsonValue | null,
     public readonly clientSnapshot: JsonValue | null,
     public readonly addressSnapshot: JsonValue | null,
+    public readonly comercial: string | null,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
     public readonly closedAt: Date | null
@@ -25,6 +26,7 @@ export class Sale {
     metadata: unknown;
     clientSnapshot: unknown;
     addressSnapshot: unknown;
+    comercial: string | null;
     createdAt: Date;
     updatedAt: Date;
     closedAt: Date | null;
@@ -38,6 +40,7 @@ export class Sale {
       (data.metadata as JsonValue | null) ?? null,
       (data.clientSnapshot as JsonValue | null) ?? null,
       (data.addressSnapshot as JsonValue | null) ?? null,
+      data.comercial ?? null,
       data.createdAt,
       data.updatedAt,
       data.closedAt ?? null
@@ -54,6 +57,7 @@ export class Sale {
       metadata: this.metadata,
       clientSnapshot: this.clientSnapshot,
       addressSnapshot: this.addressSnapshot,
+      comercial: this.comercial,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       closedAt: this.closedAt,

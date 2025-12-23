@@ -14,6 +14,7 @@ export class SaleController {
         statusId: req.body.statusId,
         notes: req.body.notes,
         metadata: req.body.metadata,
+        comercial: req.body.comercial,
       };
 
       const sale = await serviceContainer.createSaleWithProductsUseCase.execute(dto, currentUser);
@@ -95,6 +96,7 @@ export class SaleController {
         productId: req.query.productId as string | undefined,
         minTotal: req.query.minTotal ? Number(req.query.minTotal) : undefined,
         maxTotal: req.query.maxTotal ? Number(req.query.maxTotal) : undefined,
+        comercial: req.query.comercial as string | undefined,
       };
 
       const sales = await serviceContainer.listSalesWithFiltersUseCase.execute(filters, currentUser);
@@ -159,6 +161,7 @@ export class SaleController {
         statusId: req.query.statusId as string | undefined,
         from: req.query.from ? new Date(req.query.from as string) : undefined,
         to: req.query.to ? new Date(req.query.to as string) : undefined,
+        comercial: req.query.comercial as string | undefined,
       };
 
       const result = await serviceContainer.saleRepository.listPaginated(filters, pagination);
@@ -386,7 +389,7 @@ export class SaleController {
       if (!currentUser) return res.status(401).json({ message: 'No autorizado' });
 
       const { saleId } = req.params;
-      const { clientSnapshot } = req.body;
+      const { clientSnapshot, comercial } = req.body;
 
       if (!clientSnapshot) {
         return res.status(400).json({ message: 'El clientSnapshot es requerido' });
@@ -395,7 +398,8 @@ export class SaleController {
       const sale = await serviceContainer.updateClientSnapshotUseCase.execute(
         saleId,
         clientSnapshot,
-        currentUser
+        currentUser,
+        comercial
       );
 
       res.status(200).json({ message: 'Datos del cliente actualizados correctamente', sale });
@@ -419,6 +423,20 @@ export class SaleController {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       if (errorMessage.includes('permiso')) return res.status(403).json({ message: errorMessage });
+      res.status(500).json({ message: errorMessage });
+    }
+  }
+
+  static async getComerciales(req: Request, res: Response) {
+    try {
+      const currentUser = req.user;
+      if (!currentUser) return res.status(401).json({ message: 'No autorizado' });
+
+      const comerciales = await serviceContainer.saleRepository.getDistinctComerciales();
+
+      res.status(200).json(comerciales);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       res.status(500).json({ message: errorMessage });
     }
   }
