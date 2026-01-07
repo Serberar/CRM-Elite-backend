@@ -22,6 +22,21 @@ export class Client {
     public readonly lastModified: Date = new Date()
   ) {}
 
+  /**
+   * Normaliza las direcciones para que siempre sean objetos AddressInfo
+   * Maneja datos legacy guardados como strings
+   */
+  private static normalizeAddresses(addresses: unknown): AddressInfo[] {
+    if (!addresses || !Array.isArray(addresses)) return [];
+
+    return addresses.map((addr) => {
+      if (typeof addr === 'string') {
+        return { address: addr, cupsLuz: '', cupsGas: '' };
+      }
+      return addr as AddressInfo;
+    });
+  }
+
   static fromPrisma(data: {
     id: string;
     firstName: string;
@@ -46,7 +61,7 @@ export class Client {
       data.email,
       data.birthday,
       data.phones ?? [],
-      (data.addresses as AddressInfo[]) ?? [],
+      Client.normalizeAddresses(data.addresses),
       data.bankAccounts ?? [],
       data.comments ?? [],
       data.authorized ?? undefined,

@@ -7,8 +7,8 @@ export const rolePermissions = {
   },
 
   product: {
-    ListProductsUseCase: ['administrador', 'coordinador', 'verificador'],
-    GetProductUseCase: ['administrador', 'coordinador', 'verificador'],
+    ListProductsUseCase: ['administrador', 'coordinador', 'verificador', 'comercial'],
+    GetProductUseCase: ['administrador', 'coordinador', 'verificador', 'comercial'],
     CreateProductUseCase: ['administrador'],
     UpdateProductUseCase: ['administrador'],
     ToggleProductActiveUseCase: ['administrador'],

@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 5, // máximo 5 intentos por ventana
+  validate: { trustProxy: false },
   message: {
     status: 'error',
     code: 'TOO_MANY_REQUESTS',
@@ -24,6 +25,7 @@ export const authRateLimiter = rateLimit({
 export const apiRateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minuto
   max: 100, // máximo 100 requests por ventana
+  validate: { trustProxy: false },
   message: {
     status: 'error',
     code: 'TOO_MANY_REQUESTS',
