@@ -35,7 +35,26 @@ export interface ISaleRepository {
     statusId?: string;
     from?: Date;
     to?: Date;
+    comercial?: string;
   }): Promise<Sale[]>;
+
+  /** Lista ventas con todas las relaciones en UNA sola query (evita N+1) */
+  listWithRelations(filters: {
+    clientId?: string;
+    statusId?: string;
+    from?: Date;
+    to?: Date;
+    comercial?: string;
+  }): Promise<
+    Array<{
+      sale: Sale;
+      items: SaleItem[];
+      assignments: SaleAssignment[];
+      histories: SaleHistory[];
+      client?: any | null;
+      status?: any | null;
+    }>
+  >;
 
   /** Listado paginado de ventas */
   listPaginated(
@@ -44,9 +63,31 @@ export interface ISaleRepository {
       statusId?: string;
       from?: Date;
       to?: Date;
+      comercial?: string;
     },
     pagination: PaginationOptions
   ): Promise<PaginatedResponse<Sale>>;
+
+  /** Listado paginado con relaciones en UNA sola query (evita N+1) */
+  listPaginatedWithRelations(
+    filters: {
+      clientId?: string;
+      statusId?: string;
+      from?: Date;
+      to?: Date;
+      comercial?: string;
+    },
+    pagination: PaginationOptions
+  ): Promise<
+    PaginatedResponse<{
+      sale: Sale;
+      items: SaleItem[];
+      assignments: SaleAssignment[];
+      histories: SaleHistory[];
+      client?: any | null;
+      status?: any | null;
+    }>
+  >;
 
   update(
     saleId: string,
@@ -104,4 +145,31 @@ export interface ISaleRepository {
   }): Promise<SaleAssignment>;
 
   getDistinctComerciales(): Promise<string[]>;
+
+  /**
+   * Crea una venta con items en una sola transacción atómica.
+   * Si cualquier paso falla, se hace rollback de todo.
+   */
+  createWithItemsTransaction(data: {
+    clientId: string;
+    statusId: string;
+    notes?: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    metadata?: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    clientSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    addressSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    comercial?: string | null;
+    items: Array<{
+      productId?: string | null;
+      nameSnapshot: string;
+      skuSnapshot?: string | null;
+      unitPrice: number;
+      quantity: number;
+      finalPrice: number;
+    }>;
+    history: {
+      userId: string;
+      action: string;
+      payload?: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    };
+  }): Promise<Sale>;
 }

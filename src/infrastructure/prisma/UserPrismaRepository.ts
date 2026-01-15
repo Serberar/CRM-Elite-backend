@@ -19,6 +19,14 @@ export class UserPrismaRepository implements IUserRepository {
     );
   }
 
+  async delete(userId: string): Promise<void> {
+    await dbCircuitBreaker.execute(() =>
+      prisma.user.delete({
+        where: { id: userId },
+      })
+    );
+  }
+
   async updateLastLogin(userId: string, date: Date): Promise<void> {
     await dbCircuitBreaker.execute(() =>
       prisma.user.update({
@@ -40,6 +48,15 @@ export class UserPrismaRepository implements IUserRepository {
       prisma.user.findUnique({ where: { id } })
     );
     return userData ? User.fromPrisma(userData) : null;
+  }
+
+  async findAll(): Promise<User[]> {
+    const usersData = await dbCircuitBreaker.execute(() =>
+      prisma.user.findMany({
+        orderBy: { firstName: 'asc' },
+      })
+    );
+    return usersData.map((userData) => User.fromPrisma(userData));
   }
 
   async saveRefreshToken(userId: string, token: string, expiresAt: Date): Promise<void> {

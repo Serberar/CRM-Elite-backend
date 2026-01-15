@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { serviceContainer } from '@infrastructure/container/ServiceContainer';
 import { parsePaginationOptions } from '@domain/types';
+import logger from '@infrastructure/observability/logger/logger';
 
 export class SaleController {
   static async createSaleWithProducts(req: Request, res: Response) {
@@ -41,7 +42,7 @@ export class SaleController {
       const msg = error instanceof Error ? error.message : 'Error desconocido';
       if (msg.includes('permiso')) return res.status(403).json({ message: msg });
 
-      console.error('Error en createSaleWithProducts:', msg);
+      logger.error('Error en createSaleWithProducts:', { error: msg });
       return res.status(500).json({ message: msg });
     }
   }
@@ -93,44 +94,25 @@ export class SaleController {
         statusId: req.query.statusId as string | undefined,
         from: req.query.from ? new Date(req.query.from as string) : undefined,
         to: req.query.to ? new Date(req.query.to as string) : undefined,
-        productId: req.query.productId as string | undefined,
-        minTotal: req.query.minTotal ? Number(req.query.minTotal) : undefined,
-        maxTotal: req.query.maxTotal ? Number(req.query.maxTotal) : undefined,
         comercial: req.query.comercial as string | undefined,
       };
 
-      const sales = await serviceContainer.listSalesWithFiltersUseCase.execute(filters, currentUser);
+      // Usar el nuevo método que carga relaciones en UNA sola query (evita N+1)
+      const salesWithRelations = await serviceContainer.saleRepository.listWithRelations(filters);
 
-      const salesWithRelations = await Promise.all(
-        sales.map(async (sale) => {
-          const saleWithRelations = await serviceContainer.saleRepository.findWithRelations(sale.id);
-          const salePrisma = sale.toPrisma();
+      const response = salesWithRelations.map((saleData) => {
+        const salePrisma = saleData.sale.toPrisma();
+        return {
+          ...salePrisma,
+          client: salePrisma.clientSnapshot ?? null,
+          status: saleData.status ?? null,
+          items: saleData.items.map((item) => item.toPrisma()),
+          assignments: saleData.assignments.map((a) => a.toPrisma()),
+          histories: saleData.histories.map((h) => h.toPrisma()),
+        };
+      });
 
-          if (!saleWithRelations) {
-            return {
-              ...salePrisma,
-              client: salePrisma.clientSnapshot ?? null,
-              status: null,
-              items: [],
-              assignments: [],
-              histories: [],
-            };
-          }
-
-          const saleWithRelationsPrisma = saleWithRelations.sale.toPrisma();
-
-          return {
-            ...saleWithRelationsPrisma,
-            client: saleWithRelationsPrisma.clientSnapshot ?? null,
-            status: saleWithRelations.status ?? null,
-            items: saleWithRelations.items.map((item) => item.toPrisma()),
-            assignments: saleWithRelations.assignments.map((a) => a.toPrisma()),
-            histories: saleWithRelations.histories.map((h) => h.toPrisma()),
-          };
-        })
-      );
-
-      res.status(200).json(salesWithRelations);
+      res.status(200).json(response);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       if (errorMessage.includes('permiso')) {
@@ -164,40 +146,23 @@ export class SaleController {
         comercial: req.query.comercial as string | undefined,
       };
 
-      const result = await serviceContainer.saleRepository.listPaginated(filters, pagination);
+      // Usar el nuevo método que carga relaciones en UNA sola query (evita N+1)
+      const result = await serviceContainer.saleRepository.listPaginatedWithRelations(filters, pagination);
 
-      // Enriquecer con relaciones
-      const salesWithRelations = await Promise.all(
-        result.data.map(async (sale) => {
-          const saleWithRelations = await serviceContainer.saleRepository.findWithRelations(sale.id);
-          const salePrisma = sale.toPrisma();
-
-          if (!saleWithRelations) {
-            return {
-              ...salePrisma,
-              client: salePrisma.clientSnapshot ?? null,
-              status: null,
-              items: [],
-              assignments: [],
-              histories: [],
-            };
-          }
-
-          const saleWithRelationsPrisma = saleWithRelations.sale.toPrisma();
-
-          return {
-            ...saleWithRelationsPrisma,
-            client: saleWithRelationsPrisma.clientSnapshot ?? null,
-            status: saleWithRelations.status ?? null,
-            items: saleWithRelations.items.map((item) => item.toPrisma()),
-            assignments: saleWithRelations.assignments.map((a) => a.toPrisma()),
-            histories: saleWithRelations.histories.map((h) => h.toPrisma()),
-          };
-        })
-      );
+      const response = result.data.map((saleData) => {
+        const salePrisma = saleData.sale.toPrisma();
+        return {
+          ...salePrisma,
+          client: salePrisma.clientSnapshot ?? null,
+          status: saleData.status ?? null,
+          items: saleData.items.map((item) => item.toPrisma()),
+          assignments: saleData.assignments.map((a) => a.toPrisma()),
+          histories: saleData.histories.map((h) => h.toPrisma()),
+        };
+      });
 
       res.status(200).json({
-        data: salesWithRelations,
+        data: response,
         meta: result.meta,
       });
     } catch (error: unknown) {

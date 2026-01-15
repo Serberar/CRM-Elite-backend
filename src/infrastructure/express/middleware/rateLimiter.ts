@@ -1,10 +1,15 @@
 import rateLimit from 'express-rate-limit';
+import type { Request, Response, NextFunction } from 'express';
+
+// Variable de entorno para deshabilitar rate limit de login
+const DISABLE_AUTH_RATE_LIMIT = process.env.DISABLE_AUTH_RATE_LIMIT === 'true';
 
 /**
  * Rate limiter para endpoints de autenticación
  * Limita a 5 intentos por IP cada 15 minutos
+ * Se puede deshabilitar con DISABLE_AUTH_RATE_LIMIT=true
  */
-export const authRateLimiter = rateLimit({
+const authRateLimiterMiddleware = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 5, // máximo 5 intentos por ventana
   validate: { trustProxy: false },
@@ -17,6 +22,11 @@ export const authRateLimiter = rateLimit({
   legacyHeaders: false, // Deshabilita headers `X-RateLimit-*`
   skipSuccessfulRequests: false, // Cuenta todos los requests
 });
+
+// Si está deshabilitado, devuelve un middleware que no hace nada
+export const authRateLimiter = DISABLE_AUTH_RATE_LIMIT
+  ? (_req: Request, _res: Response, next: NextFunction) => next()
+  : authRateLimiterMiddleware;
 
 /**
  * Rate limiter general para API

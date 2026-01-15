@@ -70,13 +70,13 @@ export const updateClientSchema = z.object({
   }),
   body: z.object({
     firstName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').trim().optional(),
-    lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres').trim().optional(),
+    lastName: z.string().min(2, 'Los apellidos deben tener al menos 2 caracteres').trim().optional(),
     dni: z.string().min(1, 'El DNI es obligatorio').trim().optional(),
     email: z
       .string()
       .trim()
       .refine((val) => !val || val === '' || z.string().email().safeParse(val).success, {
-        message: 'El formato del email no es válido',
+        message: 'El formato del email no es válido (ejemplo: usuario@dominio.com)',
       })
       .optional()
       .nullable()
@@ -89,18 +89,33 @@ export const updateClientSchema = z.object({
       .or(z.literal(''))
       .transform((val) => (val === '' ? null : val)),
     phones: z
-      .array(z.string().min(9, 'Teléfono inválido'))
+      .array(
+        z.string().min(9, 'El teléfono debe tener al menos 9 dígitos')
+      )
+      .min(1, 'Debe tener al menos un teléfono')
       .optional(),
     addresses: z
       .array(
         z.object({
-          address: z.string().min(1, 'La dirección no puede estar vacía'),
+          address: z.string().min(1, 'La dirección no puede estar vacía. Elimínala si no quieres añadirla.'),
           cupsGas: z.string().optional().nullable(),
           cupsLuz: z.string().optional().nullable(),
         })
       )
       .optional(),
-    bankAccounts: z.array(z.string()).optional(),
+    bankAccounts: z
+      .array(
+        z
+          .string()
+          .refine(
+            (val) =>
+              !val || val === '' || /^[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{7}[A-Z0-9]{1,9}$/i.test(val),
+            {
+              message: 'El IBAN no tiene un formato válido (ejemplo: ES1234567890123456789012)',
+            }
+          )
+      )
+      .optional(),
     comments: z.array(z.string()).optional(),
     authorized: z
       .string()

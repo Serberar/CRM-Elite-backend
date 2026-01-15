@@ -29,6 +29,43 @@ interface RefreshTokenBody {
 }
 
 export class UserController {
+  static async getAll(req: Request, res: Response) {
+    try {
+      const users = await serviceContainer.getAllUsersUseCase.execute();
+      res.status(200).json(users);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al obtener usuarios';
+      res.status(500).json({ error: errorMessage });
+    }
+  }
+
+  static async delete(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      await serviceContainer.deleteUserUseCase.execute(id);
+      res.status(200).json({ message: 'Usuario eliminado correctamente' });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al eliminar usuario';
+      const statusCode = errorMessage === 'Usuario no encontrado' ? 404 : 500;
+      res.status(statusCode).json({ error: errorMessage });
+    }
+  }
+
+  static async update(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      const user = await serviceContainer.updateUserUseCase.execute(id, updateData);
+      res.status(200).json({ user, message: 'Usuario actualizado correctamente' });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al actualizar usuario';
+      let statusCode = 500;
+      if (errorMessage === 'Usuario no encontrado') statusCode = 404;
+      if (errorMessage === 'El nombre de usuario ya está en uso') statusCode = 409;
+      res.status(statusCode).json({ error: errorMessage });
+    }
+  }
+
   static async register(req: Request, res: Response) {
     try {
       const userData = req.body as RegisterBody;
@@ -39,7 +76,18 @@ export class UserController {
         password: userData.password,
         role: userData.role,
       });
-      res.status(201).json({ id: user.id, username: user.username });
+      res.status(201).json({
+        user: {
+          id: user.id,
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          createdAt: user.createdAt,
+          lastLoginAt: user.lastLoginAt,
+        },
+        message: 'Usuario creado correctamente',
+      });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Error al registrar usuario';
       res.status(400).json({ error: errorMessage });
@@ -122,8 +170,12 @@ export class UserController {
 
   static async logout(req: Request, res: Response) {
     try {
-      logger.debug('Logout request headers', { headers: req.headers });
-      logger.debug('Logout request body', { body: req.body });
+      // Sanitizar headers antes de loguear (excluir tokens y cookies)
+      const sanitizedHeaders = { ...req.headers };
+      delete sanitizedHeaders.authorization;
+      delete sanitizedHeaders.cookie;
+
+      logger.debug('Logout request headers', { headers: sanitizedHeaders });
       logger.debug('Logout request metadata', {
         contentType: req.get('Content-Type'),
         method: req.method,

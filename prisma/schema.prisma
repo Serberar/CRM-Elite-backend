@@ -92,6 +92,13 @@ model Sale {
   assignments SaleAssignment[]
   histories   SaleHistory[]
   recordings  SaleRecording[]
+
+  // Índices para mejorar rendimiento de consultas frecuentes
+  @@index([clientId])
+  @@index([statusId])
+  @@index([comercial])
+  @@index([createdAt])
+  @@index([createdAt, statusId]) // Índice compuesto para filtros comunes
 }
 
 model SaleItem {
@@ -110,6 +117,10 @@ model SaleItem {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Índices para mejorar rendimiento
+  @@index([saleId])
+  @@index([productId])
 }
 
 model SaleStatus {
@@ -134,6 +145,8 @@ model SaleHistory {
   action    String
   payload   Json?
   createdAt DateTime @default(now())
+
+  @@index([saleId])
 }
 
 model SaleAssignment {
@@ -146,6 +159,9 @@ model SaleAssignment {
 
   role      String
   createdAt DateTime @default(now())
+
+  @@index([saleId])
+  @@index([userId])
 }
 
 model SaleRecording {
@@ -162,4 +178,6 @@ model SaleRecording {
   uploadedBy   User?    @relation(fields: [uploadedById], references: [id])
 
   createdAt    DateTime @default(now())
+
+  @@index([saleId])
 }

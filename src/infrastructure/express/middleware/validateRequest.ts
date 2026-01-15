@@ -64,7 +64,7 @@ export const validateRequest = (schema: ZodSchema) => {
           'body.dni': 'DNI',
           'body.email': 'Email',
           'body.birthday': 'Fecha de nacimiento',
-          'body.phones': 'Teléfono',
+          'body.phones': 'Teléfonos',
           'body.addresses': 'Direcciones',
           'body.bankAccounts': 'Cuentas bancarias',
           'body.comments': 'Comentarios',
@@ -74,7 +74,25 @@ export const validateRequest = (schema: ZodSchema) => {
 
         const formattedErrors = error.issues.map((err: ZodIssue) => {
           const fieldPath = err.path.join('.');
-          const friendlyField = fieldNames[fieldPath] || fieldPath;
+
+          // Manejar campos de arrays con índices (ej: body.addresses.0.address)
+          let friendlyField = fieldNames[fieldPath];
+          if (!friendlyField) {
+            // Intentar extraer el campo base y el índice
+            const addressMatch = fieldPath.match(/body\.addresses\.(\d+)\.address/);
+            const phoneMatch = fieldPath.match(/body\.phones\.(\d+)/);
+            const bankMatch = fieldPath.match(/body\.bankAccounts\.(\d+)/);
+
+            if (addressMatch) {
+              friendlyField = `Dirección ${parseInt(addressMatch[1]) + 1}`;
+            } else if (phoneMatch) {
+              friendlyField = `Teléfono ${parseInt(phoneMatch[1]) + 1}`;
+            } else if (bankMatch) {
+              friendlyField = `Cuenta bancaria ${parseInt(bankMatch[1]) + 1}`;
+            } else {
+              friendlyField = fieldPath;
+            }
+          }
 
           return {
             field: friendlyField,

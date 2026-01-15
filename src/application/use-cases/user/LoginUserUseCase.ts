@@ -31,7 +31,7 @@ export class LoginUserUseCase {
 
     // Access token
     const accessToken = jwt.sign(
-      { id: user.id, role: user.role, firstName: user.firstName },
+      { id: user.id, role: user.role, firstName: user.firstName, lastName: user.lastName },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );

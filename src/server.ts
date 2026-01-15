@@ -17,8 +17,8 @@ async function main() {
       const env = validateEnv();
       logger.info(`Variables de entorno validadas correctamente (${env.NODE_ENV})`);
     } catch (envError) {
-      // Error de validación de env - mostrar mensaje y salir
-      console.error(envError instanceof Error ? envError.message : envError);
+      // Error de validación de env - usar logger.error y salir
+      logger.error('Error de configuración:', envError instanceof Error ? envError.message : envError);
       process.exit(1);
     }
 

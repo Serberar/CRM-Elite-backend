@@ -26,8 +26,15 @@ export class DeleteRecordingUseCase {
       throw new Error('Grabación no encontrada');
     }
 
+    // Validar path traversal: asegurar que el archivo está dentro de RECORDS_DIR
+    const resolvedRecordsDir = path.resolve(RECORDS_DIR);
+    const filePath = path.resolve(RECORDS_DIR, recording.storagePath);
+
+    if (!filePath.startsWith(resolvedRecordsDir + path.sep)) {
+      throw new Error('Acceso denegado: ruta inválida');
+    }
+
     // Eliminar archivo del filesystem
-    const filePath = path.join(RECORDS_DIR, recording.storagePath);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }

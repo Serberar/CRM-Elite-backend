@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 import { serviceContainer } from '@infrastructure/container/ServiceContainer';
+import logger from '@infrastructure/observability/logger/logger';
 
 const RECORDS_DIR = process.env.RECORDS_PATH || './records';
 
@@ -35,7 +36,7 @@ export class RecordingController {
       const msg = error instanceof Error ? error.message : 'Error desconocido';
       if (msg.includes('permiso')) return res.status(403).json({ message: msg });
       if (msg.includes('no encontrada')) return res.status(404).json({ message: msg });
-      console.error('Error en uploadRecording:', msg);
+      logger.error('Error en uploadRecording:', { error: msg });
       return res.status(500).json({ message: msg });
     }
   }
@@ -70,7 +71,13 @@ export class RecordingController {
         currentUser
       );
 
-      const filePath = path.join(RECORDS_DIR, recording.storagePath);
+      // Validar path traversal: asegurar que el archivo está dentro de RECORDS_DIR
+      const resolvedRecordsDir = path.resolve(RECORDS_DIR);
+      const filePath = path.resolve(RECORDS_DIR, recording.storagePath);
+
+      if (!filePath.startsWith(resolvedRecordsDir + path.sep)) {
+        return res.status(403).json({ message: 'Acceso denegado: ruta inválida' });
+      }
 
       res.setHeader('Content-Type', recording.mimeType);
       res.setHeader('Content-Disposition', `attachment; filename="${recording.filename}"`);

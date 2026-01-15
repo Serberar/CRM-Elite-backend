@@ -8,6 +8,9 @@ import { RegisterUserUseCase } from '@application/use-cases/user/RegisterUserUse
 import { LoginUserUseCase } from '@application/use-cases/user/LoginUserUseCase';
 import { RefreshTokenUseCase } from '@application/use-cases/user/RefreshTokenUseCase';
 import { LogoutUserUseCase } from '@application/use-cases/user/LogoutUserUseCase';
+import { GetAllUsersUseCase } from '@application/use-cases/user/GetAllUsersUseCase';
+import { DeleteUserUseCase } from '@application/use-cases/user/DeleteUserUseCase';
+import { UpdateUserUseCase } from '@application/use-cases/user/UpdateUserUseCase';
 
 import { CreateClientUseCase } from '@application/use-cases/client/CreateClientUseCase';
 import { GetClientUseCase } from '@application/use-cases/client/GetClientUseCase';
@@ -66,6 +69,9 @@ class ServiceContainer {
   private _loginUserUseCase?: LoginUserUseCase;
   private _refreshTokenUseCase?: RefreshTokenUseCase;
   private _logoutUserUseCase?: LogoutUserUseCase;
+  private _getAllUsersUseCase?: GetAllUsersUseCase;
+  private _deleteUserUseCase?: DeleteUserUseCase;
+  private _updateUserUseCase?: UpdateUserUseCase;
 
   // Casos de uso de Cliente
   private _createClientUseCase?: CreateClientUseCase;
@@ -194,6 +200,27 @@ class ServiceContainer {
       this._logoutUserUseCase = new LogoutUserUseCase(this.userRepository);
     }
     return this._logoutUserUseCase;
+  }
+
+  get getAllUsersUseCase(): GetAllUsersUseCase {
+    if (!this._getAllUsersUseCase) {
+      this._getAllUsersUseCase = new GetAllUsersUseCase(this.userRepository);
+    }
+    return this._getAllUsersUseCase;
+  }
+
+  get deleteUserUseCase(): DeleteUserUseCase {
+    if (!this._deleteUserUseCase) {
+      this._deleteUserUseCase = new DeleteUserUseCase(this.userRepository);
+    }
+    return this._deleteUserUseCase;
+  }
+
+  get updateUserUseCase(): UpdateUserUseCase {
+    if (!this._updateUserUseCase) {
+      this._updateUserUseCase = new UpdateUserUseCase(this.userRepository);
+    }
+    return this._updateUserUseCase;
   }
 
   // CASOS DE USO: CLIENTE
@@ -457,6 +484,9 @@ class ServiceContainer {
     this._loginUserUseCase = undefined;
     this._refreshTokenUseCase = undefined;
     this._logoutUserUseCase = undefined;
+    this._getAllUsersUseCase = undefined;
+    this._deleteUserUseCase = undefined;
+    this._updateUserUseCase = undefined;
 
     // Use Cases: Cliente
     this._createClientUseCase = undefined;

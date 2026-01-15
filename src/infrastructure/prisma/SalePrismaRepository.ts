@@ -140,6 +140,54 @@ export class SalePrismaRepository implements ISaleRepository {
     return rows.map((r) => Sale.fromPrisma(r));
   }
 
+  /**
+   * Lista ventas con todas las relaciones en UNA sola query (evita N+1)
+   */
+  async listWithRelations(filters: SaleFilters): Promise<
+    Array<{
+      sale: Sale;
+      items: SaleItem[];
+      assignments: SaleAssignment[];
+      histories: SaleHistory[];
+      client?: any | null;
+      status?: any | null;
+    }>
+  > {
+    const rows = await dbCircuitBreaker.execute(() =>
+      prisma.sale.findMany({
+        where: {
+          clientId: filters.clientId,
+          statusId: filters.statusId,
+          comercial: filters.comercial,
+          createdAt:
+            filters.from || filters.to
+              ? {
+                  ...(filters.from ? { gte: filters.from } : {}),
+                  ...(filters.to ? { lte: filters.to } : {}),
+                }
+              : undefined,
+        },
+        include: {
+          items: true,
+          assignments: true,
+          histories: true,
+          client: true,
+          status: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+    );
+
+    return rows.map((row) => ({
+      sale: Sale.fromPrisma(row),
+      items: row.items.map((i) => SaleItem.fromPrisma(i)),
+      assignments: row.assignments.map((a) => SaleAssignment.fromPrisma(a)),
+      histories: row.histories.map((h) => SaleHistory.fromPrisma(h)),
+      client: row.client ?? null,
+      status: row.status ?? null,
+    }));
+  }
+
   async listPaginated(
     filters: SaleFilters,
     pagination: PaginationOptions
@@ -171,6 +219,67 @@ export class SalePrismaRepository implements ISaleRepository {
 
     return {
       data: rows.map((r) => Sale.fromPrisma(r)),
+      meta: buildPaginationMeta(pagination.page, pagination.limit, total),
+    };
+  }
+
+  /**
+   * Lista ventas paginadas con relaciones en UNA sola query (evita N+1)
+   */
+  async listPaginatedWithRelations(
+    filters: SaleFilters,
+    pagination: PaginationOptions
+  ): Promise<
+    PaginatedResponse<{
+      sale: Sale;
+      items: SaleItem[];
+      assignments: SaleAssignment[];
+      histories: SaleHistory[];
+      client?: any | null;
+      status?: any | null;
+    }>
+  > {
+    const where = {
+      clientId: filters.clientId,
+      statusId: filters.statusId,
+      comercial: filters.comercial,
+      createdAt:
+        filters.from || filters.to
+          ? {
+              ...(filters.from ? { gte: filters.from } : {}),
+              ...(filters.to ? { lte: filters.to } : {}),
+            }
+          : undefined,
+    };
+
+    const [rows, total] = await dbCircuitBreaker.execute(() =>
+      Promise.all([
+        prisma.sale.findMany({
+          where,
+          include: {
+            items: true,
+            assignments: true,
+            histories: true,
+            client: true,
+            status: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          skip: calculateOffset(pagination.page, pagination.limit),
+          take: pagination.limit,
+        }),
+        prisma.sale.count({ where }),
+      ])
+    );
+
+    return {
+      data: rows.map((row) => ({
+        sale: Sale.fromPrisma(row),
+        items: row.items.map((i) => SaleItem.fromPrisma(i)),
+        assignments: row.assignments.map((a) => SaleAssignment.fromPrisma(a)),
+        histories: row.histories.map((h) => SaleHistory.fromPrisma(h)),
+        client: row.client ?? null,
+        status: row.status ?? null,
+      })),
       meta: buildPaginationMeta(pagination.page, pagination.limit, total),
     };
   }
@@ -298,5 +407,87 @@ export class SalePrismaRepository implements ISaleRepository {
     return result
       .map((r) => r.comercial)
       .filter((c): c is string => c !== null);
+  }
+
+  /**
+   * Crea una venta con items en una sola transacción atómica.
+   * Si cualquier paso falla, se hace rollback de todo.
+   */
+  async createWithItemsTransaction(data: {
+    clientId: string;
+    statusId: string;
+    notes?: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    metadata?: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    clientSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    addressSnapshot: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    comercial?: string | null;
+    items: Array<{
+      productId?: string | null;
+      nameSnapshot: string;
+      skuSnapshot?: string | null;
+      unitPrice: number;
+      quantity: number;
+      finalPrice: number;
+    }>;
+    history: {
+      userId: string;
+      action: string;
+      payload?: Prisma.JsonValue | Prisma.JsonNullValueInput;
+    };
+  }): Promise<Sale> {
+    const result = await dbCircuitBreaker.execute(() =>
+      prisma.$transaction(async (tx) => {
+        // 1. Crear la venta
+        const sale = await tx.sale.create({
+          data: {
+            clientId: data.clientId,
+            statusId: data.statusId,
+            totalAmount: 0,
+            notes: data.notes ?? Prisma.JsonNull,
+            metadata: data.metadata ?? Prisma.JsonNull,
+            clientSnapshot: data.clientSnapshot ?? Prisma.JsonNull,
+            addressSnapshot: data.addressSnapshot ?? Prisma.JsonNull,
+            comercial: data.comercial ?? null,
+          },
+        });
+
+        // 2. Crear todos los items
+        let totalAmount = 0;
+        for (const item of data.items) {
+          await tx.saleItem.create({
+            data: {
+              saleId: sale.id,
+              productId: item.productId ?? null,
+              nameSnapshot: item.nameSnapshot,
+              skuSnapshot: item.skuSnapshot ?? null,
+              unitPrice: item.unitPrice,
+              quantity: item.quantity,
+              finalPrice: item.finalPrice,
+            },
+          });
+          totalAmount += item.finalPrice;
+        }
+
+        // 3. Actualizar el total de la venta
+        const updatedSale = await tx.sale.update({
+          where: { id: sale.id },
+          data: { totalAmount },
+        });
+
+        // 4. Crear el registro de historial
+        await tx.saleHistory.create({
+          data: {
+            saleId: sale.id,
+            userId: data.history.userId,
+            action: data.history.action,
+            payload: data.history.payload ?? Prisma.JsonNull,
+          },
+        });
+
+        return updatedSale;
+      })
+    );
+
+    return Sale.fromPrisma(result);
   }
 }

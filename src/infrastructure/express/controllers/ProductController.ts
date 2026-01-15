@@ -95,74 +95,70 @@ export class ProductController {
   }
 
   static async updateProduct(req: Request, res: Response) {
-  try {
-    const currentUser = req.user;
-    if (!currentUser) {
-      return res.status(401).json({ message: 'No autorizado' });
+    try {
+      const currentUser = req.user;
+      if (!currentUser) {
+        return res.status(401).json({ message: 'No autorizado' });
+      }
+
+      const id = req.params.id;
+      if (!id) {
+        return res.status(400).json({ message: 'ID de producto no proporcionado' });
+      }
+
+      const product = await serviceContainer.updateProductUseCase.execute(
+        { id, ...req.body },
+        currentUser
+      );
+
+      return res.status(200).json({
+        message: 'Producto actualizado correctamente',
+        product,
+      });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Error desconocido';
+
+      if (msg.includes('permiso')) {
+        return res.status(403).json({ message: msg });
+      }
+
+      if (msg.includes('no encontrado')) {
+        return res.status(404).json({ message: msg });
+      }
+
+      return res.status(500).json({ message: msg });
     }
-
-    const id = req.params.id;
-    if (!id) {
-      return res.status(400).json({ message: 'ID de producto no proporcionado' });
-    }
-
-    const product = await serviceContainer.updateProductUseCase.execute(
-      { id, ...req.body },
-      currentUser
-    );
-
-    return res.status(200).json({
-      message: 'Producto actualizado correctamente',
-      product
-    });
-
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Error desconocido';
-
-    if (msg.includes('permiso')) {
-      return res.status(403).json({ message: msg });
-    }
-
-    if (msg.includes('no encontrado')) {
-      return res.status(404).json({ message: msg });
-    }
-
-    return res.status(500).json({ message: msg });
   }
-}
 
-static async toggleActive(req: Request, res: Response) {
-  try {
-    const currentUser = req.user;
-    if (!currentUser) {
-      return res.status(401).json({ message: 'No autorizado' });
+  static async toggleActive(req: Request, res: Response) {
+    try {
+      const currentUser = req.user;
+      if (!currentUser) {
+        return res.status(401).json({ message: 'No autorizado' });
+      }
+
+      const id = req.params.id;
+
+      const product = await serviceContainer.toggleProductActiveUseCase.execute(
+        { id },
+        currentUser
+      );
+
+      return res.status(200).json({
+        message: `Producto ${product.active ? 'activado' : 'desactivado'} correctamente`,
+        product,
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+
+      if (errorMessage.includes('permiso')) {
+        return res.status(403).json({ message: errorMessage });
+      }
+      if (errorMessage.includes('no encontrado')) {
+        return res.status(404).json({ message: errorMessage });
+      }
+
+      return res.status(500).json({ message: errorMessage });
     }
-
-    const id = req.params.id; // usa el nombre real que espera tu use case
-
-    const product = await serviceContainer.toggleProductActiveUseCase.execute(
-      { id },
-      currentUser
-    );
-
-    return res.status(200).json({
-      message: `Producto ${product.active ? 'activado' : 'desactivado'} correctamente`,
-      product,
-    });
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-
-    if (errorMessage.includes('permiso')) {
-      return res.status(403).json({ message: errorMessage });
-    }
-    if (errorMessage.includes('no encontrado')) {
-      return res.status(404).json({ message: errorMessage });
-    }
-
-    return res.status(500).json({ message: errorMessage });
   }
-}
-
-
 }

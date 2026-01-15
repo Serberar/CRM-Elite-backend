@@ -280,12 +280,13 @@ export const CircuitBreakerFactory = {
    * Circuit breaker para operaciones de base de datos
    */
   forDatabase(name: string = 'database'): CircuitBreaker {
+    const operationTimeout = parseInt(process.env.DB_OPERATION_TIMEOUT ?? '30000', 10);
     return new CircuitBreaker({
       name,
       failureThreshold: 5,      // 5 fallos consecutivos
       successThreshold: 3,      // 3 éxitos para recuperar
       timeout: 30000,           // 30 segundos abierto
-      operationTimeout: 10000,  // 10 segundos por operación
+      operationTimeout,         // 30 segundos por operación (configurable via DB_OPERATION_TIMEOUT)
     });
   },
 

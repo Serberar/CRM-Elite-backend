@@ -44,22 +44,18 @@ export class CreateSaleWithProductsUseCase {
     const clientSnapshot = safeJson(dto.client);
     const addressSnapshot = safeJson(dto.client?.address ?? null);
 
-    const sale = await this.saleRepo.create({
-      clientId: dto.client.id,
-      statusId,
-      notes: safeJson(dto.notes ?? null),
-      metadata: safeJson(dto.metadata ?? null),
-      clientSnapshot,
-      addressSnapshot,
-      comercial: dto.comercial ?? null,
-    });
+    // Preparar items con SKU snapshot (validación previa a la transacción)
+    const rawItems = Array.isArray(dto.items) ? dto.items : [];
+    const preparedItems: Array<{
+      productId?: string | null;
+      nameSnapshot: string;
+      skuSnapshot: string | null;
+      unitPrice: number;
+      quantity: number;
+      finalPrice: number;
+    }> = [];
 
-    let total = 0;
-
-    // Si dto.items está vacío o undefined, skip loop
-    const items = Array.isArray(dto.items) ? dto.items : [];
-
-    for (const item of items) {
+    for (const item of rawItems) {
       let skuSnapshot: string | null = null;
       const unitPrice = Number(item.price ?? 0);
       const quantity = Number(item.quantity ?? 0);
@@ -73,7 +69,7 @@ export class CreateSaleWithProductsUseCase {
         skuSnapshot = product.sku ?? null;
       }
 
-      await this.saleRepo.addItem(sale.id, {
+      preparedItems.push({
         productId: item.productId,
         nameSnapshot: item.name,
         skuSnapshot,
@@ -81,14 +77,9 @@ export class CreateSaleWithProductsUseCase {
         quantity,
         finalPrice,
       });
-
-      total += finalPrice;
     }
 
-    // actualizar total
-    await this.saleRepo.update(sale.id, { totalAmount: total });
-
-    const payload = safeJson({
+    const historyPayload = safeJson({
       client: dto.client,
       items: dto.items,
       statusId: dto.statusId,
@@ -96,21 +87,27 @@ export class CreateSaleWithProductsUseCase {
       metadata: dto.metadata,
     });
 
-    await this.saleRepo.addHistory({
-      saleId: sale.id,
-      userId: currentUser.id,
-      action: 'create_sale',
-      payload,
+    // Crear venta con items en una transacción atómica
+    // Si falla cualquier paso, se hace rollback automático
+    const sale = await this.saleRepo.createWithItemsTransaction({
+      clientId: dto.client.id,
+      statusId,
+      notes: safeJson(dto.notes ?? null),
+      metadata: safeJson(dto.metadata ?? null),
+      clientSnapshot,
+      addressSnapshot,
+      comercial: dto.comercial ?? null,
+      items: preparedItems,
+      history: {
+        userId: currentUser.id,
+        action: 'create_sale',
+        payload: historyPayload,
+      },
     });
 
     businessSalesCreated.inc();
-    businessSaleItemsAdded.inc(items.length);
+    businessSaleItemsAdded.inc(preparedItems.length);
 
-    const saleWithRelations = await this.saleRepo.findWithRelations(sale.id);
-    if (!saleWithRelations) {
-      throw new Error('Error al obtener la venta creada');
-    }
-
-    return saleWithRelations.sale;
+    return sale;
   }
 }

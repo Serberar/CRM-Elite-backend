@@ -40,27 +40,41 @@ export class GetSalesStatsUseCase {
       ? { statusId: { notIn: cancelledIds } }
       : {};
 
-    const [daily, weekly, monthly] = await Promise.all([
-      prisma.sale.count({
+    // Sumar cantidad de productos vendidos (no importe, sino unidades)
+    const [dailyResult, weeklyResult, monthlyResult] = await Promise.all([
+      prisma.saleItem.aggregate({
         where: {
-          ...whereNotCancelled,
-          createdAt: { gte: startOfDay },
+          sale: {
+            ...whereNotCancelled,
+            createdAt: { gte: startOfDay },
+          },
         },
+        _sum: { quantity: true },
       }),
-      prisma.sale.count({
+      prisma.saleItem.aggregate({
         where: {
-          ...whereNotCancelled,
-          createdAt: { gte: startOfWeek },
+          sale: {
+            ...whereNotCancelled,
+            createdAt: { gte: startOfWeek },
+          },
         },
+        _sum: { quantity: true },
       }),
-      prisma.sale.count({
+      prisma.saleItem.aggregate({
         where: {
-          ...whereNotCancelled,
-          createdAt: { gte: startOfMonth },
+          sale: {
+            ...whereNotCancelled,
+            createdAt: { gte: startOfMonth },
+          },
         },
+        _sum: { quantity: true },
       }),
     ]);
 
-    return { daily, weekly, monthly };
+    return {
+      daily: dailyResult._sum.quantity ?? 0,
+      weekly: weeklyResult._sum.quantity ?? 0,
+      monthly: monthlyResult._sum.quantity ?? 0,
+    };
   }
 }
